@@ -7,14 +7,21 @@ PREFIX ?= /usr/local
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-	# Linux (e.g. Ubuntu)
-	MOZJPEG_PREFIX ?= /opt/mozjpeg
-	CFLAGS += -I$(MOZJPEG_PREFIX)/include
-
-	ifneq ("$(wildcard $(MOZJPEG_PREFIX)/lib64/libjpeg.a)","")
-		LIBJPEG = $(MOZJPEG_PREFIX)/lib64/libjpeg.a
+	# Linux (includes Nix devShell)
+	# Prefer pkg-config for libjpeg/mozjpeg detection if available
+	ifneq ("$(shell pkg-config --exists libjpeg && echo yes)", "yes")
+		# Fallback: original method
+		MOZJPEG_PREFIX ?= /opt/mozjpeg
+		CFLAGS += -I$(MOZJPEG_PREFIX)/include
+		ifneq ("$(wildcard $(MOZJPEG_PREFIX)/lib64/libjpeg.a)","")
+			LIBJPEG = $(MOZJPEG_PREFIX)/lib64/libjpeg.a
+		else
+			LIBJPEG = $(MOZJPEG_PREFIX)/lib/libjpeg.a
+		endif
 	else
-		LIBJPEG = $(MOZJPEG_PREFIX)/lib/libjpeg.a
+		# Use pkg-config-discovered flags
+		CFLAGS += $(shell pkg-config --cflags libjpeg)
+		LIBJPEG = $(shell pkg-config --libs libjpeg)
 	endif
 else ifeq ($(UNAME_S),Darwin)
 	# Mac OS X
